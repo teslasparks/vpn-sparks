@@ -14,7 +14,7 @@ echo  "Local network is $LNET, netmask is $NMASK and device is $IFACE"
 exit
 
 # Start building iptables script - starts by overwriting old file
-cat << 'EOH' > /usr/local/bin/iptables.vpn
+cat << 'EOH' > /usr/local/bin/iptables2.vpn
 #!/bin/sh
 # clear iptables
 iptables -F
@@ -35,10 +35,10 @@ iptables -A OUTPUT -d 127.0.0.0/8 -j ACCEPT
 EOH
 
 # Add PIA server IP
-echo "iptables -A INPUT -s" $VPNIP "-j ACCEPT" >> /usr/local/bin/iptables.vpn
-echo "iptables -A OUTPUT -d" $VPNIP "-j ACCEPT" >> /usr/local/bin/iptables.vpn
+echo "iptables -A INPUT -s" $VPNIP "-j ACCEPT" >> /usr/local/bin/iptables2.vpn
+echo "iptables -A OUTPUT -d" $VPNIP "-j ACCEPT" >> /usr/local/bin/iptables2.vpn
 
-cat << 'EOF' >> /usr/local/bin/iptables.vpn
+cat << 'EOF' >> /usr/local/bin/iptables2.vpn
 # Next two lines give me access to/from my internal servers
 iptables -A INPUT -s 192.168.0.0/24 -j ACCEPT
 iptables -A OUTPUT -d 192.168.0.0/24 -j ACCEPT
@@ -49,5 +49,5 @@ iptables -A INPUT -j DROP
 iptables -A OUTPUT -j DROP
 EOF
 
-chmod 744 /usr/local/bin/iptables.vpn
-/usr/local/bin/iptables.vpn
+chmod 744 /usr/local/bin/iptables2.vpn
+/usr/local/bin/iptables2.vpn
