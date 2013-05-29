@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Next two echos are for debugging
+# Get IP address of VPN
+VPNIP=$(wget http://checkip.dyndns.org/ -q -O - | grep -Eo '\<[[:digit:]]{1,3}(\.[[:digit:]]{1,3}){3}\>')
+echo "VPN ip is $VPNIP"
+# Not used but is for anticipated future expansion
+# Attempt to find user's subnet. Expects netmask of 255.255.255.0
+#LNET=ip route get 8.8.8.8| grep src | awk '{print $7}' | grep -Eo '[[:digit:]]{1,3}(\.[[:digit:]]{1,3}){2}' | xargs -I {} echo {}.0
+LNET=$(route -n | grep 'U ' | grep -v tun | awk '{print $1}')
+IFACE=$(route -n | grep 'U ' | grep -v tun | awk '{print $8}')
+NMASK=$(route -n | grep 'U ' | grep -v tun | awk '{print $3}')
+echo  "Local network is $LNET, netmask is $NMASK and device is $IFACE"
+exit
+
+# Start building iptables script - starts by overwriting old file
+cat << 'EOH' > /usr/local/bin/iptables.vpn
+#!/bin/sh
+# clear iptables
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+# Make policies and default to drop
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+# Start adding VPN rules
+iptables -A INPUT -i tun+ -j ACCEPT
+iptables -A OUTPUT -o tun+ -j ACCEPT
+iptables -A INPUT -s 127.0.0.0/8 -j ACCEPT
+iptables -A OUTPUT -d 127.0.0.0/8 -j ACCEPT
+EOH
+
+# Add PIA server IP
+echo "iptables -A INPUT -s" $VPNIP "-j ACCEPT" >> /usr/local/bin/iptables.vpn
+echo "iptables -A OUTPUT -d" $VPNIP "-j ACCEPT" >> /usr/local/bin/iptables.vpn
+
+cat << 'EOF' >> /usr/local/bin/iptables.vpn
+# Next two lines give me access to/from my internal servers
+iptables -A INPUT -s 192.168.0.0/24 -j ACCEPT
+iptables -A OUTPUT -d 192.168.0.0/24 -j ACCEPT
+iptables -A INPUT -s 192.168.1.0/24 -j ACCEPT
+iptables -A OUTPUT -d 192.168.1.0/24 -j ACCEPT
+# Stop anything not from PIA or internal or localhost
+iptables -A INPUT -j DROP
+iptables -A OUTPUT -j DROP
+EOF
+
+chmod 744 /usr/local/bin/iptables.vpn
+/usr/local/bin/iptables.vpn
