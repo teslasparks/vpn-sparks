@@ -44,10 +44,8 @@ activ_vpn=$(nmcli con status | grep "${VPN_CONNECTION_NAME}")
 if [ "${activ_con}" -a ! "${activ_vpn}" ];
 then
   su -l $USER -c "nmcli con up uuid ${VPN_CONNECTION_NAME}"
-  if [ "$VPNRC" == "0" ]; then 
-    sleep 3
-    /usr/local/bin/iptables.vpn
-  fi
+  sleep 3
+  /usr/local/bin/iptables.vpn
 fi
 
 exit 0
