@@ -1,0 +1,44 @@
+#!/bin/bash
+
+#********************************************************************************
+# Name: 70iptables
+# Description: Executes when NetworkManager makes a change.
+# Purpose: To set the firewall rules whenconnecting/disconnecting from a VPN.
+#          Issues a warning window is the computer disconnects from the VPN.
+# Program Notes: 
+# 1) Meant to be used with NetworkManager. Parameters 1 and 2 are passed by that
+#    program automatically. Executes when the VPN uses a tun device and has been
+#    brought up or down.
+# 2) One variable needs to be assigned values before using:
+#    USER is the name of the user using the VPN. *Maybe* a whoami command
+#    could do this automatically.
+# 3) Expects the script iptables.vpn to be in /usr/local/bin
+# 4) Expects the script iptables-novpn to be in /usr/local/bin
+# 5) This script needs to be placed into folder /etc/NetworkManager/dispatcher.d
+#    and set executable by owner. i. e. chmod 744 70iptables
+# 6) This script requires zenity to be installed in order to display the warning
+#    window. Ubuntu based distros can install it via 'sudo apt-get insatall zenity'.
+# 7) This script, obviously, is based on my preferences. It can be used as a 
+#    template to fill your needs.
+#********************************************************************************
+
+IF=$1
+STATUS=$2
+USER=
+
+if [[ $( echo $IF | grep tun ) ]]
+then
+    case "$STATUS" in
+        vpn-up)
+           /usr/local/bin/iptables.vpn
+        ;;
+        vpn-down)
+           su -l $USER -c 'DISPLAY=:0 zenity --timeout=9999 --warning --text "VPN connection was terminated."'
+           /usr/local/bin/iptables-novpn
+        ;;
+        *)
+        ;;
+    esac
+fi
+
+exit 0
