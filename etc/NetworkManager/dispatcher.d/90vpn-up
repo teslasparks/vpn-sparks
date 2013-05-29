@@ -1,0 +1,53 @@
+#! /bin/bash
+#********************************************************************************
+# Name:90vpn-up
+# Description: Executes when NetworkManager makes a change.
+# Purpose: Acts as a work-around for a NetworkManager bug. NM does not bring up a
+#          VPN even when the checkbox is checked.
+# Program Notes: 
+# 1) Meant to be used with NetworkManager. Parameters 1 and 2 are passed by that
+#    program automatically. Fully executes when the default network interface 
+#    has been brought up.
+# 2) Four variables need to be assigned values before using:
+#    a) USER is the name of the user using the VPN. *Maybe* a whoami command
+#       could do this automatically.
+#    b) DIFACE is your default network interface device. In my case, I use wlan0.
+#    c) REQUIRED_CONNECTION_NAME is the Netmanager name of the default
+#       network connection. Issue 'nmcli con list' command. The value needed is 
+#       in the NAME column. In my case it is the SSID of my wireless connection.
+#       This is *NOT* the device name such eth0.
+#    d) VPN_CONNECTION_NAME is the UUID of the VPN connection you want to use as
+#       your default. Issue 'nmcli con list' command. The value needed is in the
+#       UUID column. 
+# 3) Expects the script iptables.vpn to be in /usr/local/bin
+# 4) This script needs to be placed into folder /etc/NetworkManager/dispatcher.d
+#    and set executable by owner. i. e. chmod 744 90vpn-up
+#********************************************************************************
+
+IF=$1
+STATUS=$2
+USER=
+DIFACE=
+REQUIRED_CONNECTION_NAME=""
+VPN_CONNECTION_NAME=""
+
+# Normally do not need to change anything past this point
+#********************************************************************************
+# Only execute this script if the default network 
+# interface has just been brought up, else exit.
+if [ "$IF" != "$DIFACE"  -a "$STATUS" != "up" ]; then
+   exit 1
+fi
+
+activ_con=$(nmcli con status | grep "${REQUIRED_CONNECTION_NAME}")
+activ_vpn=$(nmcli con status | grep "${VPN_CONNECTION_NAME}")
+if [ "${activ_con}" -a ! "${activ_vpn}" ];
+then
+  su -l $USER -c "nmcli con up uuid ${VPN_CONNECTION_NAME}"
+  if [ "$VPNRC" == "0" ]; then 
+    sleep 3
+    /usr/local/bin/iptables.vpn
+  fi
+fi
+
+exit 0
