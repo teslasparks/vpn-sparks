@@ -11,7 +11,6 @@ LNET=$(route -n | grep 'U ' | grep -v tun | awk '{print $1}')
 IFACE=$(route -n | grep 'U ' | grep -v tun | awk '{print $8}')
 NMASK=$(route -n | grep 'U ' | grep -v tun | awk '{print $3}')
 echo  "Local network is $LNET, netmask is $NMASK and device is $IFACE"
-exit
 
 # Start building iptables script - starts by overwriting old file
 cat << 'EOH' > /usr/local/bin/iptables2.vpn
