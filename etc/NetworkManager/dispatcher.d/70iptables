@@ -10,8 +10,7 @@
 #    program automatically. Executes when the VPN uses a tun device and has been
 #    brought up or down.
 # 2) One variable needs to be assigned values before using:
-#    USER is the name of the user using the VPN. *Maybe* a whoami command
-#    could do this automatically.
+#    USER is the name of the user using the VPN.
 # 3) Expects the script iptables.vpn to be in /usr/local/bin
 # 4) Expects the script iptables-novpn to be in /usr/local/bin
 # 5) This script needs to be placed into folder /etc/NetworkManager/dispatcher.d
@@ -20,11 +19,13 @@
 #    window. Ubuntu based distros can install it via 'sudo apt-get insatall zenity'.
 # 7) This script, obviously, is based on my preferences. It can be used as a 
 #    template to fill your needs.
+# 8) The call to zenity is rather spotty. The original stopped working for some
+#    reason but the update is now working. YMMV
 #********************************************************************************
 
 IF=$1
 STATUS=$2
-USER=
+USER=""
 
 if [[ $( echo $IF | grep tun ) ]]
 then
@@ -33,7 +34,7 @@ then
            /usr/local/bin/iptables.vpn
         ;;
         vpn-down)
-           su -l $USER -c 'DISPLAY=:0 zenity --timeout=9999 --warning --text "VPN connection was terminated."'
+           su -l $USER -c 'export DISPLAY=:0; zenity --timeout=9999 --warning --text "VPN connection was terminated."'
            /usr/local/bin/iptables-novpn
         ;;
         *)
