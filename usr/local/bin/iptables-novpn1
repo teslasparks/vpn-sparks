@@ -1,0 +1,29 @@
+#!/bin/sh
+
+#********************************************************************************
+# Name: iptables-novpn
+# Description: Reset firewall to essentially no firewall.
+# Purpose: To reset the firewall rules when disconnecting from a VPN.
+# Program Notes:
+# 1) Meant to execute when VPN goes down. Is called by 70iptables.
+# 2) Rename to iptables-novpn
+# 3) Should be OK if running behind a NAT router. Still open to attacks from your
+#    local network.
+# 4) A wee bit safer if the FORWARD policy line is commented out.
+# 5) I am not a network expert (IANANE). Use at your own risk.
+# 6) Meant to allow reconnection to PIA VPN or the internet in general.
+#********************************************************************************
+
+# clear iptables
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+# Make policies and default to drop
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+iptables -A INPUT -j ACCEPT
+iptables -A OUTPUT -j ACCEPT
