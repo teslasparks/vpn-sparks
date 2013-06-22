@@ -1,0 +1,84 @@
+#!/bin/bash
+#Simple Firewall Script.
+#********************************************************************************
+# Name: iptables-novpn
+# Description: Simple Firewall Script.
+# Purpose: To rest firewall and set the firewall rules when disconnecting from a
+#          VPN. For the more paranoid among us.
+# Program Notes:
+# 1) Meant to execute when VPN goes down. Is called by 70iptables.
+# 2) Rename to iptables-novpn
+# 3) Should be OK if running behind a NAT router. Still open to attacks from your
+#    local network.
+# 4) *NOT* out-of-the-box ready for POP mail and mounting MS/SMB/CIFS/NFS shares
+#    and maybe other services you use. Opening of those ports needs to be done
+#    manually. Some exist as commented lines (like POP and non-SSL SMTP) while you
+#    will need to add the others or change ports like for Bit Torrent. To add a
+#    service, use the Google to find ports and modes, copy an existing line that
+#    opens ports, then change change protocol and port to your desired service. If
+#    some service does not work then this firewall is the first place to check for
+#    a problem.
+# 5) I am not a network expert (IANANE). Use at your own risk.
+# 6) Meant to allow reconnection to PIA VPN or the internet in general.
+# 7) The bottom portion allows for logging. Comment or delete to do without logging.
+# 8) Shamelessly copied from some blog or post I found some place on the internet.
+# 9) Somewhat more complex than the other file since it actually tries to set up
+#    a real firewall.
+#********************************************************************************
+
+#Setting up default kernel tunings here (don't worry too much about these right now, they are acceptable defaults)
+#DROP ICMP echo-requests sent to broadcast/multi-cast addresses.
+echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+#DROP source routed packets
+echo 0 > /proc/sys/net/ipv4/conf/all/accept_source_route
+#Enable TCP SYN cookies
+echo 1 > /proc/sys/net/ipv4/tcp_syncookies
+#Do not ACCEPT ICMP redirect
+echo 0 > /proc/sys/net/ipv4/conf/all/accept_redirects
+#Don't send ICMP redirect
+echo 0 >/proc/sys/net/ipv4/conf/all/send_redirects
+#Enable source spoofing protection
+echo 1 > /proc/sys/net/ipv4/conf/all/rp_filter
+#Log impossible (martian) packets
+echo 1 > /proc/sys/net/ipv4/conf/all/log_martians
+
+#Flush all existing chains
+iptables --flush
+
+#Allow traffic on loopback
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+
+#Creating default policies
+iptables -P INPUT DROP
+iptables -P OUTPUT DROP
+iptables -P FORWARD DROP #If we're not a router
+
+#Allow previously established connections to continue uninterupted
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+#Allow outbound connections on the ports we previously decided.
+iptables -A OUTPUT -p tcp --dport 22 -j ACCEPT #SSH
+# No port 25 - use SMTP SSL port instead
+#iptables -A OUTPUT -p tcp --dport 25 -j ACCEPT #SMTP
+iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT #DNS
+iptables -A OUTPUT -p tcp --dport 80 -j ACCEPT #HTTP
+# No POP - use IMAP instead
+#iptables -A OUTPUT -p tcp --dport 110 -j ACCEPT #POP
+iptables -A OUTPUT -p tcp --dport 443 -j ACCEPT #HTTPS
+iptables -A OUTPUT -p tcp --dport 465 -j ACCEPT #IMAP SSL
+iptables -A OUTPUT -p tcp --dport 993 -j ACCEPT #SMTP SSL
+iptables -A OUTPUT -p tcp --dport 56851 -j ACCEPT #BT
+iptables -A OUTPUT -p tcp --dport 6969 -j ACCEPT #BT tracker
+iptables -A OUTPUT -p udp --dport 67:68 -j ACCEPT #DHCP
+iptables -A OUTPUT -p udp --dport 53 -j ACCEPT #DNS
+# Allows establishing a VPN connection
+iptables -A OUTPUT -p udp --dport 1194 -j ACCEPT #PIA VPN
+iptables -A OUTPUT -p udp --dport 56851 -j ACCEPT #BT
+
+#Set up logging for incoming traffic.
+iptables -N LOGNDROP
+iptables -A INPUT -j LOGNDROP
+iptables -A LOGNDROP -j LOG
+iptables -A LOGNDROP -j DROP
